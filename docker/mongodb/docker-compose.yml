@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # MongoDB Primary
+  mongo1:
+    image: mongo:latest
+    container_name: mongo1
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_REPLICA_SET: rs0
+    volumes:
+      - mongo1_data:/data/db
+    command: mongod --replSet rs0 --port 27017
+    networks:
+      - bhutan-network
+
+  # MongoDB Secondary 1
+  mongo2:
+    image: mongo:latest
+    container_name: mongo2
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_REPLICA_SET: rs0
+    volumes:
+      - mongo2_data:/data/db
+    command: mongod --replSet rs0 --port 27017
+    networks:
+      - bhutan-network
+
+  # MongoDB Secondary 2 (Arbiter)
+  mongo3:
+    image: mongo:latest
+    container_name: mongo3
+    ports:
+      - "27019:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_REPLICA_SET: rs0
+    volumes:
+      - mongo3_data:/data/db
+    command: mongod --replSet rs0 --port 27017
+    networks:
+      - bhutan-network
+
+  # Redis Master
+  redis:
+    image: redis:latest
+    container_name: redis_master
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - bhutan-network
+
+  # Redis Replica 1
+  redis_replica1:
+    image: redis:latest
+    container_name: redis_replica1
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_replica1_data:/data
+    command: redis-server --port 6379 --slaveof redis 6379
+    networks:
+      - bhutan-network
+
+  # Redis Replica 2
+  redis_replica2:
+    image: redis:latest
+    container_name: redis_replica2
+    ports:
+      - "6381:6379"
+    volumes:
+      - redis_replica2_data:/data
+    command: redis-server --port 6379 --slaveof redis 6379
+    networks:
+      - bhutan-network
+
+volumes:
+  mongo1_data:
+  mongo2_data:
+  mongo3_data:
+  redis_data:
+  redis_replica1_data:
+  redis_replica2_data:
+
+networks:
+  bhutan-network:
+    driver: bridge

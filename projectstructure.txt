@@ -1,0 +1,195 @@
+BhutanMart/
+│
+├── frontend/
+│   ├── public/
+│   │   ├── images/
+│   │   └── favicon.ico
+│   │
+│   ├── src/
+│   │   ├── api/
+│   │   │   ├── authApi.js
+│   │   │   ├── productApi.js
+│   │   │   ├── cartApi.js
+│   │   │   └── orderApi.js
+│   │   │
+│   │   ├── components/
+│   │   │   ├── Navbar.jsx
+│   │   │   ├── ProductCard.jsx
+│   │   │   ├── ProductList.jsx
+│   │   │   ├── CartItem.jsx
+│   │   │   └── Loader.jsx
+│   │   │
+│   │   ├── pages/
+│   │   │   ├── Home.jsx
+│   │   │   ├── Login.jsx
+│   │   │   ├── Register.jsx
+│   │   │   ├── ProductDetails.jsx
+│   │   │   ├── Cart.jsx
+│   │   │   ├── Orders.jsx
+│   │   │   └── AdminDashboard.jsx
+│   │   │
+│   │   ├── context/
+│   │   │   ├── AuthContext.jsx
+│   │   │   └── CartContext.jsx
+│   │   │
+│   │   ├── routes/
+│   │   │   └── AppRoutes.jsx
+│   │   │
+│   │   ├── utils/
+│   │   │   └── helpers.js
+│   │   │
+│   │   ├── App.jsx
+│   │   ├── main.jsx
+│   │   └── index.css
+│   │
+│   ├── .env.example
+│   ├── package.json
+│   └── vite.config.js
+│
+│
+├── backend/
+│   │
+│   ├── src/
+│   │   │
+│   │   ├── config/
+│   │   │   ├── mongodb.js
+│   │   │   ├── redis.js
+│   │   │   ├── logger.js
+│   │   │   └── swagger.js
+│   │   │
+│   │   ├── models/
+│   │   │   ├── User.js
+│   │   │   ├── Product.js
+│   │   │   ├── Category.js
+│   │   │   ├── Order.js
+│   │   │   ├── Review.js
+│   │   │   ├── Inventory.js
+│   │   │   └── Seller.js
+│   │   │
+│   │   ├── controllers/
+│   │   │   ├── authController.js
+│   │   │   ├── userController.js
+│   │   │   ├── productController.js
+│   │   │   ├── cartController.js
+│   │   │   ├── orderController.js
+│   │   │   ├── analyticsController.js
+│   │   │   └── leaderboardController.js
+│   │   │
+│   │   ├── services/
+│   │   │   ├── redisCacheService.js
+│   │   │   ├── sessionService.js
+│   │   │   ├── rateLimiterService.js
+│   │   │   ├── trendingService.js
+│   │   │   ├── analyticsService.js
+│   │   │   └── hyperloglogService.js
+│   │   │
+│   │   ├── middleware/
+│   │   │   ├── authMiddleware.js
+│   │   │   ├── roleMiddleware.js
+│   │   │   ├── errorMiddleware.js
+│   │   │   ├── rateLimiter.js
+│   │   │   └── cacheMiddleware.js
+│   │   │
+│   │   ├── routes/
+│   │   │   ├── authRoutes.js
+│   │   │   ├── userRoutes.js
+│   │   │   ├── productRoutes.js
+│   │   │   ├── cartRoutes.js
+│   │   │   ├── orderRoutes.js
+│   │   │   ├── analyticsRoutes.js
+│   │   │   └── adminRoutes.js
+│   │   │
+│   │   ├── aggregations/
+│   │   │   ├── monthlyRevenue.js
+│   │   │   ├── topProducts.js
+│   │   │   └── lowStockReport.js
+│   │   │
+│   │   ├── transactions/
+│   │   │   └── placeOrderTransaction.js
+│   │   │
+│   │   ├── seed/
+│   │   │   ├── seedUsers.js
+│   │   │   ├── seedProducts.js
+│   │   │   ├── seedOrders.js
+│   │   │   └── seedDatabase.js
+│   │   │
+│   │   ├── utils/
+│   │   │   ├── constants.js
+│   │   │   ├── generateToken.js
+│   │   │   └── pagination.js
+│   │   │
+│   │   └── app.js
+│   │
+│   ├── tests/
+│   │   ├── auth.test.js
+│   │   ├── product.test.js
+│   │   ├── cart.test.js
+│   │   └── order.test.js
+│   │
+│   ├── .env.example
+│   ├── package.json
+│   └── server.js
+│
+│
+├── database/
+│   │
+│   ├── mongodb/
+│   │   ├── indexes.js
+│   │   ├── replica-init.js
+│   │   └── shard-plan.md
+│   │
+│   ├── redis/
+│   │   ├── sentinel.conf
+│   │   ├── redis.conf
+│   │   └── persistence.md
+│   │
+│   └── diagrams/
+│       ├── mongodb-schema.drawio
+│       ├── architecture.drawio
+│       └── redis-key-design.drawio
+│
+│
+├── docker/
+│   │
+│   ├── mongodb/
+│   │   ├── mongo1/
+│   │   ├── mongo2/
+│   │   └── mongo3/
+│   │
+│   └── redis/
+│       ├── master/
+│       ├── replica1/
+│       └── replica2/
+│
+│
+├── docs/
+│   │
+│   ├── api/
+│   │   ├── postman_collection.json
+│   │   └── swagger.yaml
+│   │
+│   ├── screenshots/
+│   │   ├── login.png
+│   │   ├── products.png
+│   │   ├── cache-hit.png
+│   │   ├── trending-products.png
+│   │   ├── transaction.png
+│   │   └── replica-set.png
+│   │
+│   ├── benchmarks/
+│   │   ├── cache-performance.md
+│   │   ├── explain-query.md
+│   │   └── k6-results.md
+│   │
+│   └── presentation/
+│       └── demo-script.md
+│
+│
+├── report/
+│   └── report.md
+│
+│
+├── README.md
+├── .gitignore
+├── docker-compose.yml
+└── LICENSE
