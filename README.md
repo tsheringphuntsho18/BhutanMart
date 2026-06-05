@@ -84,14 +84,6 @@ cd frontend && npm run dev
 
 Open `http://localhost:5173` in your browser.
 
-### Default seed accounts
-
-| Role     | Email                      | Password     |
-|----------|----------------------------|--------------|
-| Admin    | admin@bhutanmart.com       | admin123     |
-| Seller   | seller1@bhutanmart.com     | seller123    |
-| Customer | john@bhutanmart.com        | customer123  |
-
 ## API Documentation
 
 A Postman collection is available at `docs/api/BhutanMart_API_Collection.json`.
