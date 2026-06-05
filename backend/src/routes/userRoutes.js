@@ -4,6 +4,7 @@ const {
   getUserProfile,
   updateUserProfile,
   addAddress,
+  removeAddress,
   addToWishlist,
   removeFromWishlist,
 } = require("../controllers/userController");
@@ -16,6 +17,7 @@ const router = express.Router();
 router.get("/profile", authMiddleware, getUserProfile);
 router.put("/profile", authMiddleware, updateUserProfile);
 router.post("/address", authMiddleware, addAddress);
+router.delete("/address/:addressId", authMiddleware, removeAddress);
 router.post("/wishlist", authMiddleware, addToWishlist);
 router.delete("/wishlist/:productId", authMiddleware, removeFromWishlist);
 

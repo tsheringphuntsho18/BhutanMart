@@ -27,11 +27,20 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login(formData.email, formData.password);
+      const data = await login(formData.email, formData.password);
       toast.success('Login successful!');
-      navigate('/');
+      const role = data?.user?.role;
+      if (role === 'admin') navigate('/admin');
+      else if (role === 'seller') navigate('/dashboard/seller');
+      else navigate('/dashboard/customer');
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Login failed');
+      const status = error.response?.status;
+      const msg = error.response?.data?.message || error.response?.data?.error;
+      if (status === 429) {
+        toast.error('Too many login attempts. Please wait 1 minute and try again.');
+      } else {
+        toast.error(msg || 'Login failed');
+      }
     } finally {
       setLoading(false);
     }

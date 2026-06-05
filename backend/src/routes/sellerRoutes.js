@@ -5,18 +5,24 @@ const {
   getSellerProfile,
   updateSellerProfile,
   getAllSellers,
+  getMyProducts,
+  getSellerOrders,
+  updateSellerOrderStatus,
 } = require("../controllers/sellerController");
 
 const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-// Public routes
+// Specific /my routes MUST come before /:sellerId wildcard
+router.get("/my/products", authMiddleware, getMyProducts);
+router.get("/my/orders", authMiddleware, getSellerOrders);
+router.put("/my/orders/:orderId/status", authMiddleware, updateSellerOrderStatus);
+router.put("/profile", authMiddleware, updateSellerProfile);
+router.post("/", authMiddleware, becomeSeller);
+
+// Wildcard routes last
 router.get("/", getAllSellers);
 router.get("/:sellerId", getSellerProfile);
-
-// Protected routes
-router.post("/", authMiddleware, becomeSeller);
-router.put("/profile", authMiddleware, updateSellerProfile);
 
 module.exports = router;

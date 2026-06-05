@@ -2,75 +2,63 @@ const Order = require("../models/Order");
 const User = require("../models/User");
 const Product = require("../models/Product");
 
+const randomStatus = () => {
+  const statuses = ["Placed", "Confirmed", "Shipped", "Delivered", "Delivered", "Delivered"];
+  return statuses[Math.floor(Math.random() * statuses.length)];
+};
+
+const randomDate = (daysAgo) => {
+  const d = new Date();
+  d.setDate(d.getDate() - Math.floor(Math.random() * daysAgo));
+  return d;
+};
+
 const seedOrders = async () => {
   try {
-    // Check if orders already exist
     const existingOrders = await Order.countDocuments();
     if (existingOrders > 0) {
       console.log("Orders already exist. Skipping...");
       return;
     }
 
-    // Get customer users and products
-    const customer1 = await User.findOne({ email: "john@bhutanmart.com" });
-    const customer2 = await User.findOne({ email: "jane@bhutanmart.com" });
-    const products = await Product.find().limit(5);
+    const customers = await User.find({ role: "customer" });
+    const products = await Product.find().limit(20);
 
-    if (!customer1 || !customer2 || products.length === 0) {
+    if (customers.length === 0 || products.length === 0) {
       console.log("Customers or products not found. Please seed them first.");
       return;
     }
 
-    const orders = [
-      {
-        userId: customer1._id,
-        items: [
-          {
-            productId: products[0]._id,
-            name: products[0].name,
-            quantity: 1,
-            price: products[0].price,
-          },
-          {
-            productId: products[2]._id,
-            name: products[2].name,
-            quantity: 2,
-            price: products[2].price,
-          },
-        ],
-        totalAmount: products[0].price + 2 * products[2].price,
-        status: "Delivered",
-        paymentMethod: "COD",
-      },
-      {
-        userId: customer2._id,
-        items: [
-          {
-            productId: products[1]._id,
-            name: products[1].name,
-            quantity: 3,
-            price: products[1].price,
-          },
-        ],
-        totalAmount: 3 * products[1].price,
-        status: "Confirmed",
-        paymentMethod: "COD",
-      },
-      {
-        userId: customer1._id,
-        items: [
-          {
-            productId: products[4]._id,
-            name: products[4].name,
-            quantity: 5,
-            price: products[4].price,
-          },
-        ],
-        totalAmount: 5 * products[4].price,
-        status: "Placed",
-        paymentMethod: "COD",
-      },
-    ];
+    const pick = (arr, n = 1) => {
+      const shuffled = [...arr].sort(() => 0.5 - Math.random());
+      return shuffled.slice(0, n);
+    };
+
+    const orders = [];
+
+    // Generate 20 orders spread across customers and products
+    for (let i = 0; i < 20; i++) {
+      const customer = customers[i % customers.length];
+      const orderProducts = pick(products, Math.floor(Math.random() * 3) + 1);
+
+      const items = orderProducts.map((p) => ({
+        productId: p._id,
+        name: p.name,
+        quantity: Math.floor(Math.random() * 3) + 1,
+        price: p.price,
+      }));
+
+      const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+      orders.push({
+        userId: customer._id,
+        items,
+        totalAmount: parseFloat(totalAmount.toFixed(2)),
+        status: randomStatus(),
+        paymentMethod: i % 3 === 0 ? "Card" : "COD",
+        createdAt: randomDate(60),
+      });
+    }
 
     const result = await Order.insertMany(orders);
     console.log(`✓ Seeded ${result.length} orders`);

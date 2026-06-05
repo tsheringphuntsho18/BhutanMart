@@ -1,16 +1,22 @@
 const Order = require("../models/Order");
 const Inventory = require("../models/Inventory");
+const Product = require("../models/Product");
 const { redisClient } = require("../config/redis");
 const mongoose = require("mongoose");
 
 // Place order (with transaction)
 const placeOrder = async (req, res) => {
   const session = await mongoose.startSession();
-  session.startTransaction();
+  // readConcern "majority" prevents reading uncommitted inventory values.
+  // writeConcern "majority" ensures order + stock changes survive a failover.
+  session.startTransaction({
+    readConcern: { level: "majority" },
+    writeConcern: { w: "majority" },
+  });
 
   try {
     const { items, paymentMethod } = req.body;
-    const userId = req.user.userId;
+    const userId = req.user._id;
 
     if (!items || items.length === 0) {
       await session.abortTransaction();
@@ -22,9 +28,23 @@ const placeOrder = async (req, res) => {
 
     // Validate and process items
     for (const item of items) {
-      const inventory = await Inventory.findOne({ productId: item.productId }).session(session);
+      let inventory = await Inventory.findOne({ productId: item.productId }).session(session);
 
-      if (!inventory || inventory.stock < item.quantity) {
+      if (!inventory) {
+        // Product was created before inventory records were enforced — create one now
+        const product = await Product.findById(item.productId).session(session);
+        if (!product) {
+          await session.abortTransaction();
+          return res.status(400).json({ error: `Product ${item.productId} not found` });
+        }
+        inventory = await Inventory.create([{
+          productId: item.productId,
+          stock: product.stock || 0,
+          lowStockThreshold: 10,
+        }], { session }).then(docs => docs[0]);
+      }
+
+      if (inventory.stock < item.quantity) {
         await session.abortTransaction();
         return res.status(400).json({ error: `Insufficient stock for product ${item.productId}` });
       }
@@ -66,6 +86,21 @@ const placeOrder = async (req, res) => {
       await redisClient.expire("trending:products", 3600);
     }
 
+    // Update top buyers leaderboard (current month)
+    const now = new Date();
+    const monthKey = `leaderboard:buyers:${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    await redisClient.zIncrBy(monthKey, totalAmount, userId.toString());
+    await redisClient.expire(monthKey, 60 * 60 * 24 * 35);
+
+    // Update top sellers leaderboard — credit each seller for their item revenue
+    for (const item of orderItems) {
+      const product = await Product.findById(item.productId).select("sellerId").lean();
+      if (product?.sellerId) {
+        const revenue = item.price * item.quantity;
+        await redisClient.zIncrBy("leaderboard:sellers", revenue, product.sellerId.toString());
+      }
+    }
+
     await session.commitTransaction();
 
     res.status(201).json({
@@ -85,7 +120,7 @@ const placeOrder = async (req, res) => {
 // Get orders for user
 const getUserOrders = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user._id;
     const { page = 1, limit = 10 } = req.query;
 
     const skip = (page - 1) * limit;
@@ -124,7 +159,7 @@ const getOrderById = async (req, res) => {
     }
 
     // Check authorization
-    if (order.userId.toString() !== req.user.userId && req.user.role !== "admin") {
+    if (order.userId.toString() !== req.user._id && req.user.role !== "admin") {
       return res.status(403).json({ error: "Unauthorized" });
     }
 

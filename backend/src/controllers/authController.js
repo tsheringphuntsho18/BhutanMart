@@ -1,6 +1,6 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
-const { generateToken } = require("../utils/generateToken");
+const generateToken = require("../utils/generateToken");
 const { redisClient } = require("../config/redis");
 
 // Register user
@@ -71,17 +71,21 @@ const loginUser = async (req, res) => {
 
     const token = generateToken(user._id, user.role);
 
-    // Store session in Redis
-    await redisClient.setEx(
-      `session:${user._id}`,
-      86400 * 7, // 7 days
-      JSON.stringify({
-        userId: user._id,
-        email: user.email,
-        role: user.role,
-        loginTime: new Date(),
-      })
-    );
+    // Store session in Redis (best-effort — skip if Redis is unavailable)
+    try {
+      await redisClient.setEx(
+        `session:${user._id}`,
+        86400 * 7,
+        JSON.stringify({
+          userId: user._id,
+          email: user.email,
+          role: user.role,
+          loginTime: new Date(),
+        })
+      );
+    } catch (redisErr) {
+      console.warn("Redis session store skipped:", redisErr.message);
+    }
 
     res.json({
       message: "Login successful",
@@ -102,9 +106,12 @@ const loginUser = async (req, res) => {
 // Logout user
 const logoutUser = async (req, res) => {
   try {
-    const userId = req.user.userId;
-    await redisClient.del(`session:${userId}`);
-
+    const userId = req.user._id;
+    try {
+      await redisClient.del(`session:${userId}`);
+    } catch (redisErr) {
+      console.warn("Redis session delete skipped:", redisErr.message);
+    }
     res.json({ message: "Logout successful" });
   } catch (error) {
     console.error("Logout error:", error);
@@ -115,7 +122,7 @@ const logoutUser = async (req, res) => {
 // Get current user
 const getCurrentUser = async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId).select("-password");
+    const user = await User.findById(req.user._id).select("-password");
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }

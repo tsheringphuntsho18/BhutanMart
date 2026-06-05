@@ -4,31 +4,42 @@ import ProductCard from '../components/ProductCard';
 import FilterBar from '../components/FilterBar';
 import '../styles/pages/Products.css';
 
+const PAGE_SIZE = 12;
+
 export default function Products() {
   const [products, setProducts] = useState([]);
+  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalCount: 0 });
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({
-    search: '',
-    minPrice: 0,
-    maxPrice: 10000,
-    category: '',
+    search: '', categoryId: '', minPrice: '', maxPrice: '', sortBy: '',
   });
+
+  // Reset to page 1 whenever filters change
+  const handleFilterChange = (newFilters) => {
+    setFilters(newFilters);
+    setPage(1);
+  };
 
   useEffect(() => {
     fetchProducts();
-  }, [filters]);
+  }, [filters, page]);
 
   const fetchProducts = async () => {
     setLoading(true);
     try {
       const params = {
-        search: filters.search || undefined,
-        minPrice: filters.minPrice,
-        maxPrice: filters.maxPrice,
-        categoryId: filters.category || undefined,
+        page,
+        limit: PAGE_SIZE,
+        ...(filters.search    && { search:     filters.search }),
+        ...(filters.categoryId && { categoryId: filters.categoryId }),
+        ...(filters.minPrice !== '' && { minPrice: filters.minPrice }),
+        ...(filters.maxPrice !== '' && { maxPrice: filters.maxPrice }),
+        ...(filters.sortBy    && { sortBy:      filters.sortBy }),
       };
       const response = await productAPI.getAllProducts(params);
-      setProducts(response.data.products || []);
+      setProducts(response.data.data || []);
+      setPagination(response.data.pagination || { currentPage: 1, totalPages: 1, totalCount: 0 });
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
@@ -44,9 +55,16 @@ export default function Products() {
       </div>
 
       <div className="products-container">
-        <FilterBar filters={filters} onFilterChange={setFilters} />
-        
+        <FilterBar filters={filters} onFilterChange={handleFilterChange} />
+
         <div className="products-content">
+          {/* Result count */}
+          {!loading && (
+            <div className="results-bar">
+              <span>{pagination.totalCount} product{pagination.totalCount !== 1 ? 's' : ''} found</span>
+            </div>
+          )}
+
           {loading ? (
             <div className="loading">Loading products...</div>
           ) : products.length === 0 ? (
@@ -58,6 +76,50 @@ export default function Products() {
               {products.map(product => (
                 <ProductCard key={product._id} product={product} />
               ))}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <div className="pagination">
+              <button
+                className="btn btn-outline btn-sm"
+                onClick={() => setPage(p => p - 1)}
+                disabled={page === 1}
+              >
+                ← Prev
+              </button>
+
+              <div className="page-numbers">
+                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                  .filter(n => n === 1 || n === pagination.totalPages || Math.abs(n - page) <= 1)
+                  .reduce((acc, n, i, arr) => {
+                    if (i > 0 && n - arr[i - 1] > 1) acc.push('...');
+                    acc.push(n);
+                    return acc;
+                  }, [])
+                  .map((n, i) =>
+                    n === '...' ? (
+                      <span key={`ellipsis-${i}`} className="page-ellipsis">…</span>
+                    ) : (
+                      <button
+                        key={n}
+                        className={`page-btn ${n === page ? 'active' : ''}`}
+                        onClick={() => setPage(n)}
+                      >
+                        {n}
+                      </button>
+                    )
+                  )}
+              </div>
+
+              <button
+                className="btn btn-outline btn-sm"
+                onClick={() => setPage(p => p + 1)}
+                disabled={page === pagination.totalPages}
+              >
+                Next →
+              </button>
             </div>
           )}
         </div>

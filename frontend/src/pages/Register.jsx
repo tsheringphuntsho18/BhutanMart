@@ -29,9 +29,10 @@ export default function Register() {
     setLoading(true);
 
     try {
-      await register(formData);
+      const data = await register(formData);
       toast.success('Registration successful!');
-      navigate('/');
+      const role = data?.user?.role;
+      navigate(role === 'seller' ? '/dashboard/seller' : '/dashboard/customer');
     } catch (error) {
       toast.error(error.response?.data?.error || 'Registration failed');
     } finally {

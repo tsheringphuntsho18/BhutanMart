@@ -14,7 +14,7 @@ export default function Cart() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user) fetchCart();
+    fetchCart(); // works for both logged-in (user cart) and guest (guest cart)
   }, [user]);
 
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);

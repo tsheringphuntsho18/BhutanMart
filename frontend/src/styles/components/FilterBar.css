@@ -124,6 +124,37 @@
   border-color: var(--primary);
 }
 
+.price-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.price-inputs span { color: var(--text-muted); font-size: 13px; }
+.price-input {
+  width: 0;
+  flex: 1;
+  padding: 8px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  outline: none;
+  background: white;
+  color: var(--text);
+}
+.price-input:focus { border-color: var(--primary); }
+
+.reset-btn {
+  width: 100%;
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.filter-group label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
 @media (max-width: 768px) {
   .filter-bar {
     min-width: 100%;

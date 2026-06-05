@@ -1,0 +1,335 @@
+.add-product-page {
+  min-height: calc(100vh - var(--navbar-height));
+  background: linear-gradient(160deg, #fff8f0 0%, var(--bg) 100%);
+  padding: 32px 16px 60px;
+}
+
+.add-product-container {
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.add-product-header {
+  margin-bottom: 28px;
+}
+
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--text-muted, #6b7280);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 16px;
+  transition: color 0.2s;
+}
+
+.btn-back:hover { color: var(--primary, #e85d04); }
+
+.add-product-header h1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.add-product-header p {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0;
+}
+
+.add-product-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-section {
+  background: #fff;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.form-section h2 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.form-group:last-child { margin-bottom: 0; }
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.required { color: #ef4444; }
+.optional { font-size: 12px; color: #9ca3af; font-weight: 400; }
+
+.input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-wrapper:focus-within {
+  border-color: var(--primary, #e85d04);
+  box-shadow: 0 0 0 3px rgba(232, 93, 4, 0.08);
+}
+
+.input-wrapper svg { color: #9ca3af; flex-shrink: 0; }
+
+.input-wrapper input {
+  border: none;
+  outline: none;
+  font-size: 14px;
+  width: 100%;
+  color: #111827;
+  background: transparent;
+  font-family: inherit;
+  padding: 0;
+}
+
+.textarea-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #111827;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.textarea-input:focus {
+  border-color: var(--primary, #e85d04);
+  box-shadow: 0 0 0 3px rgba(232, 93, 4, 0.08);
+}
+
+.select-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #111827;
+  background: #fff;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.select-input:focus {
+  border-color: var(--primary, #e85d04);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 16px;
+}
+
+.upload-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed #d1d5db;
+  border-radius: 10px;
+  padding: 12px;
+  min-height: 160px;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.2s, background 0.2s;
+  overflow: hidden;
+}
+
+.upload-zone:hover {
+  border-color: var(--primary, #e85d04);
+  background: #fff8f0;
+}
+
+.upload-zone.has-image {
+  border-style: solid;
+  border-color: #e5e7eb;
+  padding: 0;
+  min-height: 200px;
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #9ca3af;
+}
+
+.upload-placeholder svg { color: #d1d5db; }
+.upload-placeholder span { font-size: 14px; }
+.upload-hint { font-size: 12px !important; color: #c0c0c0 !important; }
+
+.upload-preview {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+
+.upload-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary, #e85d04);
+}
+
+/* Tags */
+.tag-input-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.tag-input-row .input-wrapper { flex: 1; }
+
+.tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #ede9fe;
+  color: #5b21b6;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tag-chip button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #7c3aed;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* Variants */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-header h2 { margin: 0; }
+
+.empty-hint {
+  color: #9ca3af;
+  font-size: 13px;
+  text-align: center;
+  padding: 16px 0;
+}
+
+.variants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.variant-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.variant-input {
+  padding: 9px 12px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #111827;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.variant-input:focus { border-color: var(--primary, #e85d04); }
+
+.btn-remove {
+  background: #fee2e2;
+  border: none;
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  transition: background 0.2s;
+}
+
+.btn-remove:hover { background: #fecaca; }
+
+/* Actions */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.btn-sm {
+  padding: 7px 14px;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+@media (max-width: 600px) {
+  .form-row { grid-template-columns: 1fr; }
+  .variant-row { grid-template-columns: 1fr 1fr; }
+  .variant-row .variant-input:last-of-type { grid-column: 1 / -1; }
+  .form-actions { flex-direction: column-reverse; }
+  .form-actions .btn { width: 100%; justify-content: center; }
+}

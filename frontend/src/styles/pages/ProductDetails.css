@@ -193,3 +193,75 @@
     font-size: 22px;
   }
 }
+
+/* Wishlist button */
+.btn-wishlist {
+  background: #f3f4f6;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  color: #6b7280;
+  transition: background 0.2s, border-color 0.2s;
+}
+.btn-wishlist:hover, .btn-wishlist.active {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #ef4444;
+}
+
+/* Variants */
+.variants-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.variant-chip {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 13px;
+  color: #374151;
+}
+
+/* Reviews */
+.reviews-section {
+  max-width: 1200px;
+  margin: 48px auto 60px;
+  padding: 0 20px;
+}
+.reviews-section h2 { font-size: 20px; font-weight: 700; margin-bottom: 24px; }
+.review-form {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 32px;
+  border: 1px solid #e5e7eb;
+}
+.review-form h3 { font-size: 15px; font-weight: 600; margin-bottom: 16px; }
+.review-rating-input { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.stars-input { display: flex; gap: 4px; }
+.stars-input button { background: none; border: none; cursor: pointer; padding: 2px; }
+.review-textarea {
+  width: 100%; padding: 10px 14px; border: 1.5px solid #e5e7eb;
+  border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical;
+  outline: none; margin-bottom: 12px; box-sizing: border-box;
+}
+.review-textarea:focus { border-color: var(--primary, #e85d04); }
+.no-reviews { text-align: center; color: #9ca3af; padding: 32px 0; }
+.reviews-list { display: flex; flex-direction: column; gap: 16px; }
+.review-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px 20px;
+}
+.review-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.reviewer-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff; font-weight: 700; font-size: 15px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.review-date { margin-left: auto; font-size: 12px; color: #9ca3af; }
+.review-comment { font-size: 14px; color: #374151; line-height: 1.6; }
+.btn-sm { padding: 8px 16px; font-size: 13px; }

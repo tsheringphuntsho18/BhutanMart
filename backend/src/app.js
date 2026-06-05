@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
+const path = require("path");
 
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
@@ -13,14 +14,16 @@ const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const analyticsRoutes = require("./routes/analyticsRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const uploadRoutes = require("./routes/uploadRoutes");
 
 const app = express();
 
 // Middleware
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(cors());
 app.use(morgan("combined"));
 app.use(express.json());
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // Health check
 app.get("/health", (req, res) => {
@@ -38,6 +41,7 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/upload", uploadRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -12,8 +12,7 @@ const addressSchema = new mongoose.Schema(
     state: String,
     country: String,
     postalCode: String,
-  },
-  { _id: false }
+  }
 );
 
 const userSchema = new mongoose.Schema(
@@ -55,6 +54,11 @@ const userSchema = new mongoose.Schema(
     paymentPreference: {
       type: String,
       default: "COD",
+    },
+
+    avatar: {
+      type: String,
+      default: null,
     },
   },
   { timestamps: true }

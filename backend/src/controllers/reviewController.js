@@ -5,7 +5,7 @@ const { getPaginationParams, buildPaginationResponse } = require("../utils/pagin
 const createReview = async (req, res) => {
   try {
     const { productId, rating, comment } = req.body;
-    const userId = req.user.userId;
+    const userId = req.user._id;
 
     if (!productId || !rating) {
       return res.status(400).json({ error: "Product ID and rating required" });
@@ -72,7 +72,7 @@ const updateReview = async (req, res) => {
     }
 
     // Check authorization
-    if (review.userId.toString() !== req.user.userId) {
+    if (review.userId.toString() !== req.user._id) {
       return res.status(403).json({ error: "Unauthorized" });
     }
 
@@ -104,7 +104,7 @@ const deleteReview = async (req, res) => {
     }
 
     // Check authorization
-    if (review.userId.toString() !== req.user.userId && req.user.role !== "admin") {
+    if (review.userId.toString() !== req.user._id && req.user.role !== "admin") {
       return res.status(403).json({ error: "Unauthorized" });
     }
 

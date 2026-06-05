@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { authAPI } from '../api/authAPI';
+import { useCartStore } from './CartContext';
 
 export const useAuthStore = create((set) => ({
   user: localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null,
@@ -35,6 +36,10 @@ export const useAuthStore = create((set) => ({
       localStorage.setItem('user', JSON.stringify(user));
       
       set({ user, token, isLoading: false });
+
+      // Merge any guest cart items into the newly logged-in user's cart
+      useCartStore.getState().mergeGuestCart().catch(() => {});
+
       return response.data;
     } catch (error) {
       const errorMsg = error.response?.data?.error || 'Login failed';
@@ -49,6 +54,10 @@ export const useAuthStore = create((set) => ({
     set({ user: null, token: null });
   },
 
+  updateUser: (updated) => {
+    localStorage.setItem('user', JSON.stringify(updated));
+    set({ user: updated });
+  },
   setUser: (user) => set({ user }),
   setError: (error) => set({ error }),
   clearError: () => set({ error: null }),

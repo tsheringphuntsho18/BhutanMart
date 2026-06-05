@@ -8,12 +8,13 @@ const {
 } = require("../controllers/authController");
 
 const authMiddleware = require("../middleware/authMiddleware");
+const createRateLimiter = require("../middleware/rateLimiter");
 
 const router = express.Router();
 
 router.post("/register", registerUser);
 
-router.post("/login", loginUser);
+router.post("/login", createRateLimiter("login", 3), loginUser);
 
 router.post("/logout", authMiddleware, logoutUser);
 

@@ -7,7 +7,9 @@ const { redisClient } = require("../config/redis");
 // Monthly revenue
 const getMonthlyRevenue = async (req, res) => {
   try {
-    const { month, year } = req.query;
+    const now = new Date();
+    const month = parseInt(req.query.month, 10) || (now.getMonth() + 1);
+    const year  = parseInt(req.query.year,  10) || now.getFullYear();
 
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
@@ -107,7 +109,7 @@ const getTrendingProducts = async (req, res) => {
   try {
     const { limit = 10 } = req.query;
 
-    const trendingIds = await redisClient.zRevRange("trending:products", 0, limit - 1);
+    const trendingIds = await redisClient.zRange("trending:products", 0, parseInt(limit) - 1, { REV: true });
 
     if (trendingIds.length === 0) {
       return res.json({ trendingProducts: [] });
@@ -185,6 +187,146 @@ const getUserActivityReport = async (req, res) => {
   }
 };
 
+// Daily sales report
+const getDailySalesReport = async (req, res) => {
+  try {
+    const now = new Date();
+    const m = parseInt(req.query.month, 10) || (now.getMonth() + 1);
+    const y = parseInt(req.query.year,  10) || now.getFullYear();
+
+    const startDate = new Date(y, m - 1, 1);
+    const endDate = new Date(y, m, 0, 23, 59, 59);
+
+    const daily = await Order.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate, $lte: endDate },
+          status: { $in: ["Delivered", "Confirmed", "Placed"] },
+        },
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          dailyRevenue: { $sum: "$totalAmount" },
+          ordersCount: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    res.json({ month, year, dailyReport: daily });
+  } catch (error) {
+    console.error("Daily sales error:", error);
+    res.status(500).json({ error: "Failed to fetch daily sales" });
+  }
+};
+
+// Most viewed vs most purchased product analysis
+const getMostViewedVsPurchased = async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    // Most purchased from MongoDB
+    const mostPurchased = await Order.aggregate([
+      { $unwind: "$items" },
+      {
+        $group: {
+          _id: "$items.productId",
+          totalPurchased: { $sum: "$items.quantity" },
+        },
+      },
+      { $sort: { totalPurchased: -1 } },
+      { $limit: parseInt(limit) },
+      {
+        $lookup: {
+          from: "products",
+          localField: "_id",
+          foreignField: "_id",
+          as: "product",
+        },
+      },
+      { $unwind: "$product" },
+      { $project: { "product.name": 1, "product._id": 1, totalPurchased: 1 } },
+    ]);
+
+    // Most viewed: fetch page_view counts from Redis HyperLogLog for each product
+    const productIds = mostPurchased.map((p) => p._id.toString());
+    const viewCounts = await Promise.all(
+      productIds.map(async (id) => ({
+        productId: id,
+        uniqueViews: await redisClient.pfCount(`page_views:${id}`),
+      }))
+    );
+
+    const viewMap = Object.fromEntries(
+      viewCounts.map((v) => [v.productId, v.uniqueViews])
+    );
+
+    const combined = mostPurchased.map((p) => ({
+      productId: p._id,
+      name: p.product.name,
+      totalPurchased: p.totalPurchased,
+      uniqueViews: viewMap[p._id.toString()] || 0,
+    }));
+
+    res.json({ analysis: combined });
+  } catch (error) {
+    console.error("Most viewed vs purchased error:", error);
+    res.status(500).json({ error: "Failed to fetch analysis" });
+  }
+};
+
+// Top buyers leaderboard (current month from Redis)
+const getTopBuyers = async (req, res) => {
+  try {
+    const { month, year, limit = 10 } = req.query;
+    const now = new Date();
+    const m = month || String(now.getMonth() + 1).padStart(2, "0");
+    const y = year || now.getFullYear();
+    const key = `leaderboard:buyers:${y}-${String(m).padStart(2, "0")}`;
+
+    const buyers = await redisClient.zRangeWithScores(key, 0, parseInt(limit) - 1, { REV: true });
+
+    if (!buyers.length) return res.json({ topBuyers: [] });
+
+    const User = require("../models/User");
+    const enriched = await Promise.all(
+      buyers.map(async ({ value: userId, score }) => {
+        const user = await User.findById(userId).select("name email").lean();
+        return { userId, name: user?.name, email: user?.email, totalSpent: score };
+      })
+    );
+
+    res.json({ month: m, year: y, topBuyers: enriched });
+  } catch (error) {
+    console.error("Top buyers error:", error);
+    res.status(500).json({ error: "Failed to fetch top buyers" });
+  }
+};
+
+// Top sellers leaderboard (from Redis Sorted Set)
+const getTopSellers = async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+    const sellers = await redisClient.zRangeWithScores("leaderboard:sellers", 0, parseInt(limit) - 1, { REV: true });
+
+    if (!sellers.length) return res.json({ topSellers: [] });
+
+    const Seller = require("../models/Seller");
+    const enriched = await Promise.all(
+      sellers.map(async ({ value: sellerId, score }) => {
+        const seller = await Seller.findById(sellerId).select("storeName").lean();
+        return { sellerId, storeName: seller?.storeName, score };
+      })
+    );
+
+    res.json({ topSellers: enriched });
+  } catch (error) {
+    console.error("Top sellers error:", error);
+    res.status(500).json({ error: "Failed to fetch top sellers" });
+  }
+};
+
 module.exports = {
   getMonthlyRevenue,
   getTopProducts,
@@ -192,4 +334,8 @@ module.exports = {
   getTrendingProducts,
   getProductAnalytics,
   getUserActivityReport,
+  getDailySalesReport,
+  getMostViewedVsPurchased,
+  getTopBuyers,
+  getTopSellers,
 };

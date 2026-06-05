@@ -1,24 +1,37 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { productAPI } from '../api/authAPI';
+import { productAPI, analyticsAPI } from '../api/authAPI';
 import ProductCard from '../components/ProductCard';
-import { ArrowRight, Zap, ShoppingBag, Shield, Truck } from 'lucide-react';
+import { ArrowRight, Zap, ShoppingBag, Shield, Truck, Trophy } from 'lucide-react';
 import '../styles/pages/Home.css';
 
 export default function Home() {
   const [trendingProducts, setTrendingProducts] = useState([]);
+  const [topSellers, setTopSellers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchTrendingProducts();
+    analyticsAPI.getTopSellers()
+      .then(res => setTopSellers(res.data.topSellers || []))
+      .catch(() => {});
   }, []);
 
   const fetchTrendingProducts = async () => {
     try {
-      const response = await productAPI.getAllProducts({ limit: 8 });
-      setTrendingProducts(response.data.products || []);
+      // Try real trending from Redis sorted set first
+      const res = await analyticsAPI.getTrendingProducts();
+      const trending = res.data.trendingProducts || [];
+
+      if (trending.length > 0) {
+        setTrendingProducts(trending.slice(0, 8));
+      } else {
+        // Fall back to newest products when Redis has no trending data yet
+        const fallback = await productAPI.getAllProducts({ limit: 8, sortBy: 'newest' });
+        setTrendingProducts(fallback.data.data || []);
+      }
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.error('Error fetching trending products:', error);
     } finally {
       setLoading(false);
     }
@@ -80,7 +93,7 @@ export default function Home() {
           <div>
             <h2>Trending Products</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: 4 }}>
-              Real-time bestsellers powered by Redis leaderboard
+              Bestsellers powered by Redis leaderboard
             </p>
           </div>
           <Link to="/products" className="btn btn-outline">
@@ -102,6 +115,38 @@ export default function Home() {
           </p>
         )}
       </section>
+
+      {/* Top Sellers Leaderboard */}
+      {topSellers.length > 0 && (
+        <section className="trending">
+          <div className="section-header">
+            <div>
+              <h2><Trophy size={22} style={{ verticalAlign: 'middle', marginRight: 8, color: '#f59e0b' }} />Top Sellers This Month</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: 14, marginTop: 4 }}>
+                Ranked by total sales revenue — powered by Redis leaderboard
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 600 }}>
+            {topSellers.slice(0, 5).map((s, i) => (
+              <div key={s.sellerId} style={{
+                display: 'flex', alignItems: 'center', gap: 14,
+                background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '12px 16px',
+              }}>
+                <span style={{
+                  width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                  background: i === 0 ? '#f59e0b' : i === 1 ? '#9ca3af' : i === 2 ? '#b45309' : '#e5e7eb',
+                  color: i < 3 ? '#fff' : '#374151',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 700, fontSize: 14,
+                }}>#{i + 1}</span>
+                <span style={{ flex: 1, fontWeight: 600 }}>{s.storeName || 'Seller'}</span>
+                <span style={{ fontWeight: 700, color: '#10b981' }}>Nu. {Number(s.score).toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* CTA */}
       <section className="cta">

@@ -1,37 +1,56 @@
 import { create } from 'zustand';
-import { cartAPI, productAPI } from '../api/authAPI';
+import { cartAPI, guestCartAPI, productAPI } from '../api/authAPI';
+
+// Generate or retrieve a persistent guest ID
+const getGuestId = () => {
+  let id = localStorage.getItem('guestId');
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem('guestId', id);
+  }
+  return id;
+};
+
+const enrichItems = async (serverItems) => {
+  return Promise.all(
+    serverItems.map(async (item) => {
+      try {
+        const prod = await productAPI.getProductById(item.productId);
+        const p = prod.data.product || prod.data;
+        return {
+          productId: item.productId,
+          quantity: item.quantity,
+          price: p.price || 0,
+          name: p.name || '',
+          image: p.imageUrl || '',
+        };
+      } catch {
+        return { productId: item.productId, quantity: item.quantity, price: 0, name: '' };
+      }
+    })
+  );
+};
 
 export const useCartStore = create((set, get) => ({
   items: [],
   total: 0,
   isLoading: false,
 
+  // Load cart from server (user or guest)
   fetchCart: async () => {
     const token = localStorage.getItem('token');
-    if (!token) return;
     set({ isLoading: true });
     try {
-      const response = await cartAPI.getCart();
-      const serverItems = response.data.items || [];
-
-      // Enrich items with product price info
-      const enriched = await Promise.all(
-        serverItems.map(async (item) => {
-          try {
-            const prod = await productAPI.getProductById(item.productId);
-            return {
-              productId: item.productId,
-              quantity: item.quantity,
-              price: prod.data.price || 0,
-              name: prod.data.name || '',
-              image: prod.data.imageUrl || '',
-            };
-          } catch {
-            return { productId: item.productId, quantity: item.quantity, price: 0, name: '' };
-          }
-        })
-      );
-
+      let serverItems = [];
+      if (token) {
+        const res = await cartAPI.getCart();
+        serverItems = res.data.items || [];
+      } else {
+        const guestId = getGuestId();
+        const res = await guestCartAPI.getCart(guestId);
+        serverItems = res.data.items || [];
+      }
+      const enriched = await enrichItems(serverItems);
       set({ items: enriched, isLoading: false });
       get().calculateTotal();
     } catch {
@@ -41,12 +60,15 @@ export const useCartStore = create((set, get) => ({
 
   addToCart: async (productId, quantity = 1, price, name = '', image = '') => {
     const token = localStorage.getItem('token');
-    if (token) {
-      try {
+    try {
+      if (token) {
         await cartAPI.addToCart({ productId, quantity });
-      } catch {
-        // continue with local state even if sync fails
+      } else {
+        const guestId = getGuestId();
+        await guestCartAPI.addToCart(guestId, { productId, quantity });
       }
+    } catch {
+      // fall through — update local state anyway
     }
 
     const state = get();
@@ -65,12 +87,14 @@ export const useCartStore = create((set, get) => ({
 
   removeFromCart: async (productId) => {
     const token = localStorage.getItem('token');
-    if (token) {
-      try {
+    try {
+      if (token) {
         await cartAPI.removeFromCart(productId);
-      } catch {
-        // ignore
+      } else {
+        await guestCartAPI.removeFromCart(getGuestId(), productId);
       }
+    } catch {
+      // ignore
     }
     set({ items: get().items.filter((i) => i.productId !== productId) });
     get().calculateTotal();
@@ -78,31 +102,64 @@ export const useCartStore = create((set, get) => ({
 
   updateCartItem: async (productId, quantity) => {
     const token = localStorage.getItem('token');
-    if (token) {
-      try {
+    try {
+      if (token) {
         await cartAPI.updateCartItem({ productId, quantity });
-      } catch {
-        // ignore
+      } else {
+        await guestCartAPI.updateCartItem(getGuestId(), { productId, quantity });
       }
+    } catch {
+      // ignore
     }
-    set({
-      items: get().items.map((i) =>
-        i.productId === productId ? { ...i, quantity } : i
-      ),
-    });
+    if (quantity <= 0) {
+      set({ items: get().items.filter((i) => i.productId !== productId) });
+    } else {
+      set({
+        items: get().items.map((i) =>
+          i.productId === productId ? { ...i, quantity } : i
+        ),
+      });
+    }
     get().calculateTotal();
   },
 
   clearCart: async () => {
     const token = localStorage.getItem('token');
-    if (token) {
-      try {
+    try {
+      if (token) {
         await cartAPI.clearCart();
-      } catch {
-        // ignore
+      } else {
+        await guestCartAPI.clearCart(getGuestId());
       }
+    } catch {
+      // ignore
     }
     set({ items: [], total: 0 });
+  },
+
+  // Called after login: push any guest cart items into the user's cart, then clear guest cart
+  mergeGuestCart: async () => {
+    const guestId = getGuestId();
+    try {
+      const res = await guestCartAPI.getCart(guestId);
+      const guestItems = res.data.items || [];
+      if (guestItems.length === 0) return;
+
+      // Add each guest item to the user cart
+      await Promise.all(
+        guestItems.map((item) =>
+          cartAPI.addToCart({ productId: item.productId, quantity: item.quantity }).catch(() => {})
+        )
+      );
+
+      // Clear guest cart from Redis
+      await guestCartAPI.clearCart(guestId);
+    } catch {
+      // non-critical — user cart still works without merge
+    }
+
+    // Reload the user cart with merged items
+    await get().fetchCart();
   },
 
   calculateTotal: () => {

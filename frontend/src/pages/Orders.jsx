@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { orderAPI } from '../api/authAPI';
 import toast from 'react-hot-toast';
-import { Package, Clock, CheckCircle, XCircle, ShoppingBag } from 'lucide-react';
+import { Package, Clock, CheckCircle, XCircle, ShoppingBag, Ban } from 'lucide-react';
 import '../styles/pages/Orders.css';
 
 const STATUS_COLORS = {
@@ -14,13 +14,14 @@ const STATUS_COLORS = {
   Returned:  'badge-error',
 };
 
+const CANCELLABLE = ['Placed', 'Confirmed'];
+
 export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [cancellingId, setCancellingId] = useState(null);
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
+  useEffect(() => { fetchOrders(); }, []);
 
   const fetchOrders = async () => {
     try {
@@ -31,6 +32,20 @@ export default function Orders() {
       toast.error('Failed to load orders');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCancel = async (orderId) => {
+    if (!window.confirm('Cancel this order? Stock will be restored.')) return;
+    setCancellingId(orderId);
+    try {
+      await orderAPI.cancelOrder(orderId);
+      setOrders(prev => prev.map(o => o._id === orderId ? { ...o, status: 'Cancelled' } : o));
+      toast.success('Order cancelled');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to cancel order');
+    } finally {
+      setCancellingId(null);
     }
   };
 
@@ -103,7 +118,19 @@ export default function Orders() {
                 <div className="order-total">
                   Total: <strong>Nu. {order.totalAmount?.toLocaleString() || order.total?.toLocaleString()}</strong>
                 </div>
-                <span className="badge badge-info">{order.paymentMethod || 'COD'}</span>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span className="badge badge-info">{order.paymentMethod || 'COD'}</span>
+                  {CANCELLABLE.includes(order.status) && (
+                    <button
+                      className="btn-cancel-order"
+                      onClick={() => handleCancel(order._id)}
+                      disabled={cancellingId === order._id}
+                    >
+                      <Ban size={14} />
+                      {cancellingId === order._id ? 'Cancelling…' : 'Cancel Order'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
