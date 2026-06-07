@@ -3,61 +3,22 @@
 **Title:** Designing a Production-Ready E-Commerce Backend with MongoDB and Redis  
 **Module:** DBS302 — NoSQL Database Systems  
 **Student Name:** Tshering Phuntsho  
-**Roll Number:** 02230310  
+**Student Number:** 02230310  
 **Course:** Bachelor of Engineering in Software Engineering  
+**Department:** Computing Technologies Department (CTD)  
 **Date:** 7 June 2026  
 
 ---
 
 ## Abstract
 
-BhutanMart is a production ready e-commerce platform built to demonstrate thoughtful polyglot persistence. MongoDB serves as the primary document store for durable, structured data (users, products, orders, reviews, inventory, sellers, categories), while Redis acts as the in-memory layer for high-throughput, low-latency operations including product caching, session management, shopping cart persistence, real-time trending leaderboards, unique visitor counting, and rate limiting. The platform exposes a REST API (Node.js / Express) consumed by a React frontend and implements all eight non-functional requirements covering performance, scalability, high availability, consistency, durability, security, observability, and data integrity. This report documents every architectural decision with justification: schema design (embedding vs. referencing), index strategy, aggregation pipelines, ACID transactions, Redis data structure selection, cache-aside strategy, stampede prevention, eviction policy, and persistence configuration.
+BhutanMart is a production ready e-commerce platform built to demonstrate thoughtful polyglot persistence. MongoDB serves as the primary document store for durable, structured data (users, products, orders, reviews, inventory, sellers, categories), while Redis acts as the in-memory layer for high throughput, low latency operations including product caching, session management, shopping cart persistence, real-time trending leaderboards, unique visitor counting and rate limiting. The platform exposes a REST API (Node.js / Express) consumed by a React frontend and implements all eight non-functional requirements covering performance, scalability, high availability, consistency, durability, security, observability and data integrity. This report documents every architectural decision with justification: schema design (embedding vs. referencing), index strategy, aggregation pipelines, ACID transactions, Redis data structure selection, cache aside strategy, stampede prevention, eviction policy and persistence configuration.
 
 ---
 
 ## 1. System Architecture Diagram
 
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                         CLIENT (Browser)                                  │
-│              React 19 + Vite + React Router v6  (port 5173)              │
-│   Pages: Home · Products · ProductDetails · Cart · Orders · Dashboards   │
-└────────────────────────────┬─────────────────────────────────────────────┘
-                             │  HTTP / REST (Axios)
-                             │  JWT Bearer Token
-┌────────────────────────────▼─────────────────────────────────────────────┐
-│                   BACKEND API — Node.js / Express 5                       │
-│                                                                           │
-│  Middleware stack:                                                        │
-│  ┌──────────┐ ┌────────┐ ┌──────────────┐ ┌──────────┐ ┌─────────────┐ │
-│  │  Helmet  │ │  CORS  │ │    Morgan    │ │   Auth   │ │ RateLimiter │ │
-│  │ (headers)│ │       │ │ (HTTP logs)  │ │  (JWT)   │ │  (Redis)    │ │
-│  └──────────┘ └────────┘ └──────────────┘ └──────────┘ └─────────────┘ │
-│                                                                           │
-│  Route modules:                                                           │
-│  /api/auth  /api/products  /api/cart  /api/orders  /api/analytics        │
-│  /api/users  /api/sellers  /api/reviews  /api/admin  /api/upload         │
-└──────────────┬──────────────────────────────────────┬────────────────────┘
-               │  Mongoose ODM                        │  node-redis v4
-               │  writeConcern: majority              │
-               │  readPreference: primaryPreferred     │
-┌──────────────▼───────────────┐      ┌───────────────▼──────────────────┐
-│   MONGODB ATLAS               │      │   REDIS 6 (localhost:6379)       │
-│   Cluster: fujo8cy.mongodb   │      │                                  │
-│   Replica Set: 3 nodes       │      │  Data Structures in use:         │
-│   (1 primary + 2 secondaries)│      │                                  │
-│                               │      │  String  → product cache,        │
-│   Collections (7):           │      │            session, rate counter  │
-│   ├── users                  │      │  Hash    → cart, session data     │
-│   ├── products               │      │  List    → recently viewed        │
-│   ├── orders                 │      │  SortedSet→ trending, leaderboards│
-│   ├── categories             │      │  HyperLogLog→ unique page views   │
-│   ├── reviews                │      │                                  │
-│   ├── inventory              │      │  Persistence: RDB + AOF (hybrid) │
-│   └── sellers                │      │  Eviction: allkeys-lru / 256 MB  │
-│                               │      │  HA: Sentinel (documented)       │
-└───────────────────────────────┘      └──────────────────────────────────┘
-```
+![system architecture](/screenshots/architecture.png)  
 
 **Cache-Aside Data Flow:**
 
@@ -80,20 +41,20 @@ Request → Check Redis (product:{id})
 
 | Requirement | MongoDB Fit |
 |---|---|
-| Diverse, evolving product attributes | Schema-flexible documents; `attributes: Mixed` stores category-specific fields (`RAM`, `fabric`) without schema migrations |
+| Diverse, evolving product attributes | Schema flexible documents; `attributes: Mixed` stores category specific fields (`RAM`, `fabric`) without schema migrations |
 | Strong consistency for orders | Multi-document ACID transactions with `readConcern: majority` and `writeConcern: majority` |
-| Full-text search | Native `$text` index across `name`, `description`, and `tags` |
+| Full text search | Native `$text` index across `name`, `description` and `tags` |
 | Aggregation analytics | `$group`, `$lookup`, `$unwind`, `$match` pipeline stages power 7 analytical queries |
-| High availability | MongoDB Atlas managed 3-node replica set with automatic failover |
-| Sub-category support | `parentCategory` self-reference in the Category collection |
+| High availability | MongoDB Atlas managed 3 node replica set with automatic failover |
+| Sub-category support | `parentCategory` self reference in the Category collection |
 
-MongoDB's document model maps naturally to e-commerce: products embed variants (always fetched together), orders embed items as a price snapshot (preserves the price the customer actually paid), and users embed addresses (bounded, no external identity).
+MongoDB's document model maps naturally to e-commerce: products embed variants (always fetched together), orders embed items as a price snapshot (preserves the price the customer actually paid) and users embed addresses (bounded, no external identity).
 
 ### Why Redis?
 
 | Requirement | Redis Fit |
 |---|---|
-| Hot read paths | O(1) key lookup — `GET product:{id}` in ~0.2 ms vs ~15–25 ms MongoDB query |
+| Hot read paths | O(1) key lookup — `GET product:{id}` in ~0.2 ms vs ~15 – 25 ms MongoDB query |
 | Session management | `SETEX session:{userId}` — automatic TTL expiry, no background cleanup |
 | Real-time leaderboards | Sorted Set with atomic `ZINCRBY` — top-N in O(log N) with `ZRANGE REV` |
 | Unique visitor counting | HyperLogLog — constant 12 KB memory per key regardless of cardinality |
@@ -103,7 +64,9 @@ MongoDB's document model maps naturally to e-commerce: products embed variants (
 
 ### Why This Combination (CAP Theorem)
 
-MongoDB is **CP** (Consistency + Partition Tolerance): with `writeConcern: majority`, a write is acknowledged only after the primary and at least one secondary persist it. With `readConcern: majority` inside transactions, reads never return uncommitted data. Redis is **AP** (Availability + Partition Tolerance): the cache may serve data up to its TTL window stale, which is acceptable for product listings. This hybrid delivers strong consistency where it matters (order placement, stock decrement) and maximum performance where eventual consistency is tolerable (product catalogue, homepage).
+MongoDB is **CP** (Consistency + Partition Tolerance): with `writeConcern: majority`, a write is acknowledged only after the primary and at least one secondary persist it. With `readConcern: majority` inside transactions, reads never return uncommitted data.      
+
+Redis is **AP** (Availability + Partition Tolerance): the cache may serve data up to its TTL window stale, which is acceptable for product listings. This hybrid delivers strong consistency where it matters (order placement, stock decrement) and maximum performance where eventual consistency is tolerable (product catalogue, homepage).
 
 ---
 
@@ -136,7 +99,7 @@ MongoDB is **CP** (Consistency + Partition Tolerance): with `writeConcern: major
 }
 ```
 
-**Embed vs Reference:** Addresses are embedded — they have no identity outside the user, are always fetched with the user, and are bounded in size. Wishlist items reference Product documents by `ObjectId` — products are independent entities that can be updated or deleted without affecting the user document.
+**Embed vs Reference:** Addresses are embedded, they have no identity outside the user, are always fetched with the user and are bounded in size. Wishlist items reference Product documents by `ObjectId`. Products are independent entities that can be updated or deleted without affecting the user document.
 
 #### 3.1.2 products
 ```json
@@ -154,11 +117,11 @@ MongoDB is **CP** (Consistency + Partition Tolerance): with `writeConcern: major
     { "size": String, "color": String, "sku": String }
   ],
   "attributes": Mixed    // Polymorphic: { "RAM": "16GB" } for electronics,
-                         //              { "fabric": "Cotton" } for clothing
+                         //              { "fabric": "Cotton" } for clothing  
 }
 ```
 
-**Polymorphic Attributes:** The `Mixed` type stores category-specific key-value pairs without EAV tables. This is a key advantage of document databases over relational — no schema migration when a new attribute type is introduced.
+**Polymorphic Attributes:** The `Mixed` type stores category specific key-value pairs without EAV tables. This is a key advantage of document databases over relational. No schema migration when a new attribute type is introduced.
 
 #### 3.1.3 orders
 ```json
@@ -202,7 +165,7 @@ MongoDB is **CP** (Consistency + Partition Tolerance): with `writeConcern: major
 }
 ```
 
-Reviews are kept separate because they are user-generated content with unbounded growth per product. Embedding would create unbounded arrays and require fetching all reviews on every product read.
+Reviews are kept separate because they are user generated content with unbounded growth per product. Embedding would create unbounded arrays and require fetching all reviews on every product read.
 
 #### 3.1.6 inventory
 ```json
@@ -231,9 +194,9 @@ Stock is a separate collection so ACID transactions can lock and update inventor
 | Collection | Index | Type | Justification |
 |---|---|---|---|
 | users | `{ email: 1 }` | Unique | Login lookup — O(1), enforces no duplicate accounts |
-| products | `{ name: "text", description: "text", tags: "text" }` | Text | Full-text search via `$text` operator and relevance scoring |
-| products | `{ categoryId: 1, price: -1 }` | Compound | Category browse + price sort — satisfies the most common filter query as an index-covered scan |
-| orders | `{ userId: 1, createdAt: -1 }` | Compound | Order history per user sorted newest-first — no COLLSCAN on large collections |
+| products | `{ name: "text", description: "text", tags: "text" }` | Text | Full text search via `$text` operator and relevance scoring |
+| products | `{ categoryId: 1, price: -1 }` | Compound | Category browse + price sort satisfies the most common filter query as an index covered scan |
+| orders | `{ userId: 1, createdAt: -1 }` | Compound | Order history per user sorted newest first, no COLLSCAN on large collections |
 | inventory | `{ productId: 1 }` | Unique | One record per product; O(1) stock lookup during order transaction |
 
 The compound index on `orders { userId, createdAt }` is especially important: `db.orders.find({userId}).sort({createdAt:-1})` is fully satisfied by the index without fetching documents, reducing I/O from O(n) to O(log n).
@@ -260,7 +223,7 @@ The compound index on `orders { userId, createdAt }` is especially important: `d
 
 ### 4.1 User Management
 
-Registration hashes the password with **bcrypt (cost factor 10)** before storage — plaintext is never persisted. Login validates credentials, issues a **JWT (HS256)** signed with `JWT_SECRET`, and stores a session string in Redis with a 7-day TTL:
+Registration hashes the password with **bcrypt (cost factor 10)** before storage. Plaintext is never persisted. Login validates credentials, issues a **JWT (HS256)** signed with `JWT_SECRET` and stores a session string in Redis with a 7-day TTL:
 
 ```javascript
 await redisClient.setEx(`session:${user._id}`, 86400 * 7,
@@ -291,7 +254,7 @@ const sort = sortBy === 'price_asc' ? { price: 1 }
 await Product.find(filter).sort(sort).skip(skip).limit(limit);
 ```
 
-The text index enables full-text search across `name`, `description`, and `tags`. The compound index `{ categoryId, price }` covers the most common browse pattern without a collection scan.
+The text index enables full text search across `name`, `description` and `tags`. The compound index `{ categoryId, price }` covers the most common browse pattern without a collection scan.
 
 `GET /api/products/:id` implements **cache-aside**:
 
@@ -311,7 +274,7 @@ Cache invalidation: on product update or delete, `await redisClient.del(`product
 
 ### 4.3 Shopping Cart and Sessions
 
-The cart is a **Redis Hash** where each field is a `productId` and the value is `{ productId, quantity }`. This allows O(1) per-item operations without deserialising the whole cart:
+The cart is a **Redis Hash** where each field is a `productId` and the value is `{ productId, quantity }`. This allows O(1) per item operations without deserialising the whole cart:
 
 ```javascript
 // Add / update item
@@ -369,8 +332,8 @@ Order history uses the compound index `{ userId: 1, createdAt: -1 }` for efficie
 
 | Feature | Redis Operation | Endpoint |
 |---|---|---|
-| Top-10 trending | `ZINCRBY trending:products 1 {productId}` on view + purchase | `GET /api/analytics/trending` |
-| Recently viewed | `LREM` + `LPUSH` + `LTRIM 0 9` with 5-second NX dedup lock | `GET /api/products/recently-viewed` |
+| Top 10 trending | `ZINCRBY trending:products 1 {productId}` on view + purchase | `GET /api/analytics/trending` |
+| Recently viewed | `LREM` + `LPUSH` + `LTRIM 0 9` with 5 second NX dedup lock | `GET /api/products/recently-viewed` |
 | Rate limiting (login) | `INCR rate:login:{ip}` limit=3, TTL=60s | `POST /api/auth/login` |
 | Rate limiting (checkout) | `INCR rate:checkout:{ip}` limit=10, TTL=60s | `POST /api/orders` |
 | Top buyers (month) | `ZINCRBY leaderboard:buyers:{YYYY-MM} {amount} {userId}` | `GET /api/analytics/leaderboard/buyers` |
@@ -438,7 +401,7 @@ Inventory.aggregate([
 ]);
 ```
 
-**Most Viewed vs Most Purchased** (cross-database join):
+**Most Viewed vs Most Purchased** (cross database join):
 ```javascript
 // Step 1: Top purchased from MongoDB aggregation
 const mostPurchased = await Order.aggregate([ ... ]);
