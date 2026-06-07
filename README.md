@@ -1,6 +1,6 @@
 # BhutanMart
 
-A production-ready e-commerce platform built with MongoDB and Redis as part of the DBS302 assignment. The project demonstrates polyglot persistence — MongoDB as the primary document store and Redis as the in-memory layer for caching, sessions, real-time features, and analytics.
+A production-ready e-commerce platform built with MongoDB and Redis as part of the DBS302 assignment. The project demonstrates polyglot persistence — MongoDB as the primary document store and Redis as the in-memory layer for caching, sessions, real-time features and analytics.
 
 ## Tech Stack
 
@@ -16,8 +16,8 @@ A production-ready e-commerce platform built with MongoDB and Redis as part of t
 
 ## Features
 
-- User registration, login, JWT auth, and role-based access (Customer / Seller / Admin)
-- Product catalogue with full-text search, filtering, sorting, and pagination
+- User registration, login, JWT auth and role-based access (Customer / Seller / Admin)
+- Product catalogue with full-text search, filtering, sorting and pagination
 - Redis-cached product details (cache-aside with jittered TTL for stampede prevention)
 - Shopping cart backed by Redis Hash (authenticated and guest cart)
 - MongoDB ACID transactions for order placement with atomic stock decrement
@@ -27,7 +27,7 @@ A production-ready e-commerce platform built with MongoDB and Redis as part of t
 - HyperLogLog unique product page visitor counting
 - Rate limiting on API endpoints (Redis counter with TTL)
 - Seller profiles with leaderboard scores
-- Analytics: daily/monthly revenue, top products, low-stock alerts, most-viewed vs most-purchased
+- Analytics: daily/monthly revenue, top products, low stock alerts, most viewed vs most purchased
 
 ## Local Setup
 
@@ -70,7 +70,7 @@ cd backend
 npm run seed
 ```
 
-This seeds: **10 users** (1 admin, 2 sellers, 7 customers), **5 categories**, **2 seller profiles**, **50 products**, and **20 orders**.
+This seeds: **10 users** (1 admin, 2 sellers, 7 customers), **5 categories**, **2 seller profiles**, **50 products** and **20 orders**.
 
 ### 5. Start the application
 
