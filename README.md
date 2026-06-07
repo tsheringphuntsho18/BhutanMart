@@ -106,34 +106,34 @@ GET    /api/analytics/revenue/daily
 GET    /api/admin/redis-info         (Redis INFO stats + cache hit-rate)
 ```
 
-## Project Structure
+## Working application
 
-```
-BhutanMart/
-├── backend/
-│   ├── src/
-│   │   ├── config/          # MongoDB & Redis connections
-│   │   ├── controllers/     # Route handlers
-│   │   ├── middleware/      # Auth, rate-limiter, cache, error
-│   │   ├── models/          # Mongoose schemas (6 collections)
-│   │   ├── routes/          # Express routers
-│   │   ├── seed/            # Database seed scripts
-│   │   ├── services/        # Redis service layer
-│   │   ├── aggregations/    # MongoDB aggregation pipelines
-│   │   └── transactions/    # MongoDB ACID transaction helpers
-│   └── tests/
-├── frontend/
-│   └── src/
-│       ├── pages/           # React pages
-│       ├── components/      # Shared components
-│       ├── api/             # Axios API clients
-│       └── context/         # Auth & Cart context
-├── database/
-│   ├── mongodb/             # Index definitions, replica-set config, shard plan
-│   └── redis/               # redis.conf, sentinel.conf, persistence notes
-├── docker/                  # Docker Compose for MongoDB replica set
-├── docs/api/                # Postman collection
-├── report/                  # Technical report (report.md)
-├── .env.example
-└── README.md
-```
+### 1. Landing Page
+
+![app](screenshots/landingpage.png)
+
+### 2. Admin Dashboard
+
+![admin](screenshots/admin1.png)
+
+![admin](screenshots/admin2.png)
+
+![admin](screenshots/admin3.png)
+
+### 3. Seller Dashboard
+
+![seller](screenshots/seller1.png)
+
+![seller](screenshots/seller2.png)
+
+![seller](screenshots/seller3.png)
+
+![seller](screenshots/seller4.png)
+
+### 4. Customer Dashboard
+
+![customer](screenshots/customer1.png)
+
+![customer](screenshots/customer2.png)
+
+![customer](screenshots/customer3.png)

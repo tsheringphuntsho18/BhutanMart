@@ -5,13 +5,13 @@
 **Student Name:** Tshering Phuntsho  
 **Roll Number:** 02230310  
 **Course:** Bachelor of Engineering in Software Engineering  
-**Date:** June 2026  
+**Date:** 7 June 2026  
 
 ---
 
 ## Abstract
 
-BhutanMart is a production-ready e-commerce platform built to demonstrate thoughtful polyglot persistence. MongoDB serves as the primary document store for durable, structured data (users, products, orders, reviews, inventory, sellers, categories), while Redis acts as the in-memory layer for high-throughput, low-latency operations including product caching, session management, shopping cart persistence, real-time trending leaderboards, unique visitor counting, and rate limiting. The platform exposes a REST API (Node.js / Express) consumed by a React frontend and implements all eight non-functional requirements covering performance, scalability, high availability, consistency, durability, security, observability, and data integrity. This report documents every architectural decision with justification: schema design (embedding vs. referencing), index strategy, aggregation pipelines, ACID transactions, Redis data structure selection, cache-aside strategy, stampede prevention, eviction policy, and persistence configuration.
+BhutanMart is a production ready e-commerce platform built to demonstrate thoughtful polyglot persistence. MongoDB serves as the primary document store for durable, structured data (users, products, orders, reviews, inventory, sellers, categories), while Redis acts as the in-memory layer for high-throughput, low-latency operations including product caching, session management, shopping cart persistence, real-time trending leaderboards, unique visitor counting, and rate limiting. The platform exposes a REST API (Node.js / Express) consumed by a React frontend and implements all eight non-functional requirements covering performance, scalability, high availability, consistency, durability, security, observability, and data integrity. This report documents every architectural decision with justification: schema design (embedding vs. referencing), index strategy, aggregation pipelines, ACID transactions, Redis data structure selection, cache-aside strategy, stampede prevention, eviction policy, and persistence configuration.
 
 ---
 
