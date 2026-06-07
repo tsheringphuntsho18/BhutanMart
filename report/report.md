@@ -427,21 +427,21 @@ Hot read paths are served from Redis:
 | Shopping cart | `HGETALL cart:{userId}` | ~0.2 ms |
 | Session validation | `GET session:{userId}` | ~0.2 ms |
 
-Real-time cache statistics are exposed at `GET /api/admin/redis-info`, showing `keyspace_hits`, `keyspace_misses`, and a computed `hit_rate`. Current hit rate: **92.87%** (1,276 hits / 1,374 total).
+Real-time cache statistics are exposed at `GET /api/admin/redis-info`, showing `keyspace_hits`, `keyspace_misses` and a computed `hit_rate`. Current hit rate: **92.87%** (1,276 hits / 1,374 total).
 
 ### NFR2 — Scalability (Sharding Plan)
 
 | Collection | Shard Key | Justification |
 |---|---|---|
-| orders | `{ userId: 1, createdAt: 1 }` | High cardinality; range queries per user stay on one shard; `createdAt` prevents hot-shards for power users |
-| products | `{ categoryId: 1, _id: 1 }` | Natural partition by category; hashed `_id` prevents intra-category hot-spots |
+| orders | `{ userId: 1, createdAt: 1 }` | High cardinality; range queries per user stay on one shard; `createdAt` prevents hot shards for power users |
+| products | `{ categoryId: 1, _id: 1 }` | Natural partition by category; hashed `_id` prevents intra category hot spots |
 | inventory | `{ productId: 1 }` | Unique per product; random distribution |
 
-A pure `userId` shard key for orders would create hot shards for high-volume users. The compound key `{ userId, createdAt }` distributes writes temporally and avoids cross-shard queries for order history lookups.
+A pure `userId` shard key for orders would create hot shards for high volume users. The compound key `{ userId, createdAt }` distributes writes temporally and avoids cross-shard queries for order history lookups.
 
 ### NFR3 — High Availability
 
-**MongoDB:** Atlas cluster (`cluster0.fujo8cy.mongodb.net`) provides a managed 3-node replica set (1 primary + 2 secondaries). The connection string uses `retryWrites=true` for automatic retry on transient failures. Automatic failover occurs within 30 seconds if the primary becomes unavailable.
+**MongoDB:** Atlas cluster (`cluster0.fujo8cy.mongodb.net`) provides a managed 3 node replica set (1 primary + 2 secondaries). The connection string uses `retryWrites=true` for automatic retry on transient failures. Automatic failover occurs within 30 seconds if the primary becomes unavailable.
 
 **Redis Sentinel** (documented configuration in `database/redis/sentinel.conf`):
 ```
@@ -451,7 +451,7 @@ sentinel down-after-milliseconds mymaster 30000
 sentinel parallel-syncs mymaster 1
 sentinel failover-timeout mymaster 180000
 ```
-Quorum of 2 ensures at least 2 of 3 Sentinel nodes must agree before a failover is triggered, preventing split-brain scenarios.
+Quorum of 2 ensures at least 2 of 3 Sentinel nodes must agree before a failover is triggered, preventing split brain scenarios.
 
 ### NFR4 — Consistency
 
@@ -471,9 +471,9 @@ session.startTransaction({
 });
 ```
 
-**CAP Trade-off:** `readConcern: majority` prevents dirty reads of uncommitted inventory, ensuring a concurrent order cannot see stock decremented by a transaction that later aborts. The trade-off is slightly higher read latency (waiting for majority acknowledgement) versus `readConcern: local` which reads the primary's latest view regardless of replication state.
+**CAP Trade-off:** `readConcern: majority` prevents dirty reads of uncommitted inventory, ensuring a concurrent order cannot see stock decremented by a transaction that later aborts. The trade off is slightly higher read latency (waiting for majority acknowledgement) versus `readConcern: local` which reads the primary's latest view regardless of replication state.
 
-For the Redis cache layer, eventual consistency is intentional — product cache may be up to 1 hour stale. This is acceptable because price changes do not need to propagate sub-second. Stock levels are always read from MongoDB inside transactions, never from cache.
+For the Redis cache layer, eventual consistency is intentional. Product cache may be up to 1 hour stale. This is acceptable because price changes do not need to propagate sub-second. Stock levels are always read from MongoDB inside transactions, never from cache.
 
 ### NFR5 — Durability
 
@@ -540,11 +540,11 @@ Current persistence status (verified):
 
 Two critical workflows use MongoDB ACID transactions:
 
-1. **Order Placement** — `orders` + `inventory` modified atomically. If stock is insufficient or the connection drops mid-transaction, `session.abortTransaction()` rolls back all writes.
+1. **Order Placement:** `orders` + `inventory` modified atomically. If stock is insufficient or the connection drops mid-transaction, `session.abortTransaction()` rolls back all writes.
 
-2. **Order Cancellation** — stock is restored (`$inc: { stock: +quantity }`) and order status set to `Cancelled` atomically. Prevents stock discrepancy if the status update succeeds but the stock restoration fails.
+2. **Order Cancellation:** stock is restored (`$inc: { stock: +quantity }`) and order status set to `Cancelled` atomically. Prevents stock discrepancy if the status update succeeds but the stock restoration fails.
 
-Terminal order states (`Delivered`, `Cancelled`, `Returned`) are enforced at the backend — once reached, no further status changes are permitted.
+Terminal order states (`Delivered`, `Cancelled`, `Returned`) are enforced at the backend. Once reached, no further status changes are permitted.
 
 ---
 
@@ -552,7 +552,7 @@ Terminal order states (`Delivered`, `Cancelled`, `Returned`) are enforced at the
 
 ### 6.1 Cache-Aside (Lazy Loading)
 
-Cache-aside was chosen over write-through because products are read orders of magnitude more often than they are written. Write-through would add Redis latency to every product update — a low-frequency operation — to benefit high-frequency reads. Cache-aside defers population until the first read.
+Cache-aside was chosen over write-through because products are read orders of magnitude more often than they are written. Write-through would add Redis latency to every product update — a low frequency operation — to benefit high frequency reads. Cache-aside defers population until the first read.
 
 **Read path:**
 ```
@@ -583,17 +583,17 @@ const jitteredTTL = () => Math.floor(BASE_TTL * (0.9 + Math.random() * 0.2));
 // Result: TTL randomly between 3240–4320 seconds
 ```
 
-This spreads expiry times across an 18-minute window so concurrent requests for the same product do not all expire simultaneously. For extremely high-traffic products, a distributed lock (`SET NX PX`) could further serialise re-population, but jitter alone handles BhutanMart's expected traffic.
+This spreads expiry times across an 18 minute window so concurrent requests for the same product do not all expire simultaneously. For extremely high traffic products, a distributed lock (`SET NX PX`) could further serialise re-population, but jitter alone handles BhutanMart's expected traffic.
 
 ### 6.3 Data Consistency Between Cache and Source of Truth
 
 | Scenario | Consistency Model |
 |---|---|
-| Product price/details change | Strong — cache is invalidated immediately on update (`DEL`) |
-| Product stock during order | Strong — stock is ALWAYS read from MongoDB inside an ACID transaction; cache is never consulted for stock |
-| Product listing (browse page) | Eventual — no caching on listing queries; always reads from MongoDB |
-| Session data | Strong — session is deleted on logout; JWT expiry independently enforced |
-| Cart data | Strong — cart key is deleted from Redis immediately on order placement |
+| Product price/details change | Strong: cache is invalidated immediately on update (`DEL`) |
+| Product stock during order | Strong: stock is ALWAYS read from MongoDB inside an ACID transaction; cache is never consulted for stock |
+| Product listing (browse page) | Eventual: no caching on listing queries; always reads from MongoDB |
+| Session data | Strong: session is deleted on logout; JWT expiry independently enforced |
+| Cart data | Strong: cart key is deleted from Redis immediately on order placement |
 
 ---
 
@@ -608,13 +608,13 @@ This spreads expiry times across an 18-minute window so concurrent requests for 
 | SET | 47,619 req/s | 0.351 ms |
 | GET | 111,111 req/s | 0.231 ms |
 
-**Application-level measurement (Node.js → Redis):**
+**Application level measurement (Node.js → Redis):**
 
 | Scenario | Latency |
 |---|---|
 | Warm cache GET (`product:{id}`) | **~0.20 ms** |
-| Cold cache (MongoDB query + populate) | **~15–25 ms** |
-| Cache speedup factor | **75×–125×** |
+| Cold cache (MongoDB query + populate) | **~15 – 25 ms** |
+| Cache speedup factor | **75× – 125×** |
 
 **Live cache statistics (from `GET /api/admin/redis-info`):**
 
@@ -628,7 +628,7 @@ This spreads expiry times across an 18-minute window so concurrent requests for 
 | AOF Enabled | Yes |
 | Eviction Policy | allkeys-lru |
 
-The 7.13% miss rate represents cold-start accesses (first view of a product) and post-invalidation re-population. Under sustained traffic, the hit rate approaches 99%+ as all active products are warmed.
+The 7.13% miss rate represents cold start accesses (first view of a product) and post invalidation re-population. Under sustained traffic, the hit rate approaches 99%+ as all active products are warmed.
 
 ### 7.2 MongoDB Query Profiling (`explain()`)
 
@@ -659,7 +659,7 @@ db.orders.find({ userId: ObjectId("...") }).sort({ createdAt: -1 }).explain("exe
 db.products.find({ $text: { $search: "wireless headphones" } }).explain("executionStats")
 ```
 - Uses text index `{ name: "text", description: "text", tags: "text" }` → `TEXT` stage
-- Returns relevance-scored results; no collection scan
+- Returns relevance scored results; no collection scan
 
 ---
 
@@ -668,26 +668,33 @@ db.products.find({ $text: { $search: "wireless headphones" } }).explain("executi
 | Challenge | Root Cause | Resolution |
 |---|---|---|
 | `zRevRange` not a function (500 error) | `node-redis` v4 removed `zRevRange`; replaced by `zRange` with `{ REV: true }` | Updated all Sorted Set range calls to use `zRange(..., { REV: true })` |
-| Cart enrichment causing recently-viewed duplicates | `getProductById` called by both ProductDetails page and CartContext enrichment simultaneously — race condition between `lRem` and `lPush` | Added Redis `SET NX` dedup lock (`rv-lock:{userId}:{productId}`, TTL 5s); only the first concurrent call proceeds |
-| Product tracking skipped on cache hits | `return res.json(...)` inside the cache-hit branch ran before the tracking code (HyperLogLog, trending, recently-viewed) | Restructured `getProductById` — tracking block runs after cache check, before the single final `res.json()` |
+| Cart enrichment causing recently viewed duplicates | `getProductById` called by both ProductDetails page and CartContext enrichment simultaneously — race condition between `lRem` and `lPush` | Added Redis `SET NX` dedup lock (`rv-lock:{userId}:{productId}`, TTL 5s); only the first concurrent call proceeds |
+| Product tracking skipped on cache hits | `return res.json(...)` inside the cache hit branch ran before the tracking code (HyperLogLog, trending, recently-viewed) | Restructured `getProductById` — tracking block runs after cache check, before the single final `res.json()` |
 | `/:sellerId` route catching `/my/orders` | Express matches routes top-to-bottom; wildcard `/:sellerId` was registered before `/my/orders` | Moved all specific `/my/...` routes above the wildcard in `sellerRoutes.js` |
 | Seller orders not showing customer orders | `createProduct` used `req.user._id` (User ID) as `sellerId`, but `getSellerOrders` queried by `Seller._id` | Fixed `createProduct` to look up and use the Seller document's `_id`; migrated existing products with a one-time database update; `getSellerOrders` also queries `req.user._id` as fallback for legacy products |
 | MongoDB profiling unavailable | Atlas M0 free tier does not support the `profile` command via the driver | Endpoint now returns a graceful message directing to Atlas Performance Advisor; replica set and write/read concern details are shown instead |
 | Redis rate limiter not applying | The backend process running at the time was a stale instance started before the rate limiter code was added | Identified via Redis `KEYS rate:*` (returned empty); killed stale processes and started fresh |
-| Revenue Summary always showing zero | `getMonthlyRevenue()` called without `month`/`year` params → `new Date(undefined, NaN, 1)` = `Invalid Date` → aggregation matched nothing | Added defaults in controller (`month = now.getMonth()+1`) and explicit params in dashboard calls |
+| Revenue Summary always showing zero | `getMonthlyRevenue()` called without `month`/`year` params.  `new Date(undefined, NaN, 1)` = `Invalid Date` aggregation matched nothing | Added defaults in controller (`month = now.getMonth()+1`) and explicit params in dashboard calls |
 
 ---
 
 ## 9. Future Enhancements
 
-1. **Redis Cluster** — Upgrade from documented Sentinel to Redis Cluster for horizontal write scaling and automatic sharding across 6+ nodes.
-2. **Distributed lock for cache re-population** — Full `SET NX PX` locking around the MongoDB fetch + `SETEX` block to serialise all concurrent misses for the same key.
-3. **MongoDB Atlas Search** — Replace `$text` index with Atlas Search (Apache Lucene) for fuzzy matching, faceted search, autocomplete, and relevance tuning.
-4. **Message queue (BullMQ / Redis Streams)** — Decouple order fulfilment (inventory sync, email notifications, PDF receipts) from the HTTP request cycle using Redis Streams as the transport layer.
-5. **Write-behind caching for cart** — Batch persist cart changes to MongoDB asynchronously, enabling cross-device cart recovery for logged-in users.
-6. **Prometheus + Grafana observability** — Replace manual Redis INFO polling with `redis_exporter` → Prometheus scrape → Grafana dashboards for latency percentiles, hit rate trends, and memory pressure alerts.
-7. **Product recommendations** — Combine Redis `recent:{userId}` List with MongoDB purchase history in a collaborative filtering pipeline to surface personalised product recommendations.
-8. **MongoDB time-series collection** — Migrate the daily sales data to a MongoDB Time Series collection for better compression and time-range query performance.
+1. **Redis Cluster:** Upgrade from documented Sentinel to Redis Cluster for horizontal write scaling and automatic sharding across 6+ nodes.
+
+2. **Distributed lock for cache re-population:** Full `SET NX PX` locking around the MongoDB fetch + `SETEX` block to serialise all concurrent misses for the same key.
+
+3. **MongoDB Atlas Search:** Replace `$text` index with Atlas Search (Apache Lucene) for fuzzy matching, faceted search, autocomplete, and relevance tuning.
+
+4. **Message queue (BullMQ / Redis Streams):** Decouple order fulfilment (inventory sync, email notifications, PDF receipts) from the HTTP request cycle using Redis Streams as the transport layer.
+
+5. **Write-behind caching for cart:** Batch persist cart changes to MongoDB asynchronously, enabling cross-device cart recovery for logged-in users.
+
+6. **Prometheus + Grafana observability:** Replace manual Redis INFO polling with `redis_exporter` Prometheus scrape → Grafana dashboards for latency percentiles, hit rate trends and memory pressure alerts.
+
+7. **Product recommendations:** Combine Redis `recent:{userId}` List with MongoDB purchase history in a collaborative filtering pipeline to surface personalised product recommendations.
+
+8. **MongoDB time-series collection:** Migrate the daily sales data to a MongoDB Time Series collection for better compression and time range query performance.
 
 ---
 
