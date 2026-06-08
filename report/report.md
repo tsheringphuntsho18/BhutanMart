@@ -7,7 +7,7 @@
 **Group Members:**   
 1. Tshering Phuntsho (02230310)  
 2. Pema Dolker (02230294)
-3. edit here
+3. Dupchu Wangmo(02230282)
 4. edit here
 
 
