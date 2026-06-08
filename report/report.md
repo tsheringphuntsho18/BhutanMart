@@ -6,9 +6,9 @@
 **Department:** Computing Technologies Department (CTD)   
 **Group Members:**   
 1. Tshering Phuntsho (02230310)  
-2. Pema Dolker (02230294)
+2. Tandin Zangmo (02230305) 
 3. Dupchu Wangmo(02230282)
-4. Tandin Zangmo (02230305)
+4. Pema Dolker (02230294)
 
 
 **Date:** 7 June 2026  
