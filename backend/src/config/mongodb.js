@@ -8,11 +8,9 @@ const connectDB = async () => {
       // Guarantees the write survives a primary failover.
       writeConcern: { w: "majority", wtimeout: 5000 },
 
-      // Read preference: primaryPreferred — reads go to the primary by default,
-      // falling back to a secondary only when the primary is unavailable.
-      // Critical reads (order placement) use readConcern "majority" inside
-      // transactions to prevent reading uncommitted data.
-      readPreference: "primaryPreferred",
+      // Read preference: primary — required for transactions (MongoDB disallows
+      // primaryPreferred inside a transaction).
+      readPreference: "primary",
     });
 
     console.log("MongoDB Atlas Connected");
