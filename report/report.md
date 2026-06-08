@@ -1,11 +1,16 @@
 # BhutanMart — Technical Report
 
 **Title:** Designing a Production-Ready E-Commerce Backend with MongoDB and Redis  
-**Module:** DBS302 — NoSQL Database Systems  
-**Student Name:** Tshering Phuntsho  
-**Student Number:** 02230310  
+**Module:** DBS302 — NoSQL Database Systems    
 **Course:** Bachelor of Engineering in Software Engineering  
-**Department:** Computing Technologies Department (CTD)  
+**Department:** Computing Technologies Department (CTD)   
+**Group Members:**   
+1. Tshering Phuntsho (02230310)  
+2. edit here
+3. edit here
+4. edit here
+
+
 **Date:** 7 June 2026  
 
 ---
