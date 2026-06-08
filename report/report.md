@@ -6,7 +6,7 @@
 **Department:** Computing Technologies Department (CTD)   
 **Group Members:**   
 1. Tshering Phuntsho (02230310)  
-2. edit here
+2. Pema Dolker (02230294)
 3. edit here
 4. edit here
 
